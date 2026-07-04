@@ -1,0 +1,373 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PaymentMethodType {
+  BANK_ACCOUNT
+  E_WALLET
+}
+
+enum P2PAdSide {
+  BUY
+  SELL
+}
+
+enum P2PAdStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  FILLED
+}
+
+enum P2PTradeStatus {
+  PENDING_PAYMENT
+  PAID
+  RELEASED
+  CANCELLED
+  DISPUTED
+}
+
+enum FiatPaymentStatus {
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+}
+
+enum LedgerTransactionType {
+  SEED
+  ESCROW_LOCK
+  ESCROW_RELEASE
+  ESCROW_REFUND
+  INTERNAL_TRANSFER
+  EXTERNAL_WITHDRAWAL
+  EXTERNAL_WITHDRAWAL_REFUND
+}
+
+enum LedgerEntryDirection {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerBalanceType {
+  AVAILABLE
+  LOCKED
+}
+
+enum TransferStatus {
+  COMPLETED
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id                  String               @id @default(uuid()) @db.Uuid
+  email               String               @unique
+  passwordHash        String               @map("password_hash")
+  displayName         String               @map("display_name")
+  kycStatus           KycStatus            @default(PENDING) @map("kyc_status")
+  status              UserStatus           @default(ACTIVE)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  userRoles           UserRole[]
+  cryptoAccounts      CryptoAccount[]
+  paymentMethods      PaymentMethod[]
+  p2pAds              P2PAd[]              @relation("MakerAds")
+  buyerTrades         P2PTrade[]           @relation("BuyerTrades")
+  sellerTrades        P2PTrade[]           @relation("SellerTrades")
+  sentTransfers       InternalTransfer[]   @relation("SentTransfers")
+  receivedTransfers   InternalTransfer[]   @relation("ReceivedTransfers")
+  externalWithdrawals ExternalWithdrawal[]
+  revokedTokens       RevokedToken[]
+
+  @@map("users")
+}
+
+model RevokedToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  jti       String   @unique
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime @default(now()) @map("revoked_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("revoked_tokens")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  code            String           @unique
+  name            String
+  createdAt       DateTime         @default(now()) @map("created_at")
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  code            String           @unique
+  description     String
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model CryptoAsset {
+  id                  String               @id @default(uuid()) @db.Uuid
+  symbol              String               @unique
+  name                String
+  precision           Int                  @default(8)
+  isActive            Boolean              @default(true) @map("is_active")
+  cryptoAccounts      CryptoAccount[]
+  p2pAds              P2PAd[]
+  internalTransfers   InternalTransfer[]
+  externalWithdrawals ExternalWithdrawal[]
+  withdrawalNetworks  WithdrawalNetwork[]
+
+  @@map("crypto_assets")
+}
+
+model WithdrawalNetwork {
+  id            String      @id @default(uuid()) @db.Uuid
+  assetId       String      @map("asset_id") @db.Uuid
+  network       String
+  name          String
+  withdrawFee   Decimal     @map("withdraw_fee") @db.Decimal(36, 18)
+  withdrawMin   Decimal     @map("withdraw_min") @db.Decimal(36, 18)
+  withdrawMax   Decimal     @map("withdraw_max") @db.Decimal(36, 18)
+  addressRegex  String      @map("address_regex")
+  requiresTag   Boolean     @default(false) @map("requires_tag")
+  isActive      Boolean     @default(true) @map("is_active")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  asset         CryptoAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, network])
+  @@index([assetId, isActive])
+  @@map("withdrawal_networks")
+}
+
+model FiatCurrency {
+  id             String          @id @default(uuid()) @db.Uuid
+  code           String          @unique
+  name           String
+  precision      Int             @default(2)
+  p2pAds         P2PAd[]
+  paymentMethods PaymentMethod[]
+
+  @@map("fiat_currencies")
+}
+
+model CryptoAccount {
+  id               String        @id @default(uuid()) @db.Uuid
+  userId           String        @map("user_id") @db.Uuid
+  assetId          String        @map("asset_id") @db.Uuid
+  availableBalance Decimal       @default(0) @map("available_balance") @db.Decimal(36, 18)
+  lockedBalance    Decimal       @default(0) @map("locked_balance") @db.Decimal(36, 18)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset            CryptoAsset   @relation(fields: [assetId], references: [id])
+  ledgerEntries    LedgerEntry[]
+
+  @@unique([userId, assetId])
+  @@map("crypto_accounts")
+}
+
+model LedgerTransaction {
+  id                 String                @id @default(uuid()) @db.Uuid
+  type               LedgerTransactionType
+  referenceType      String?               @map("reference_type")
+  referenceId        String?               @map("reference_id") @db.Uuid
+  createdAt          DateTime              @default(now()) @map("created_at")
+  entries            LedgerEntry[]
+  internalTransfer   InternalTransfer?
+  externalWithdrawal ExternalWithdrawal?
+
+  @@map("ledger_transactions")
+}
+
+model LedgerEntry {
+  id                  String               @id @default(uuid()) @db.Uuid
+  ledgerTransactionId String               @map("ledger_transaction_id") @db.Uuid
+  cryptoAccountId     String               @map("crypto_account_id") @db.Uuid
+  direction           LedgerEntryDirection
+  balanceType         LedgerBalanceType    @map("balance_type")
+  amount              Decimal              @db.Decimal(36, 18)
+  balanceAfter        Decimal              @map("balance_after") @db.Decimal(36, 18)
+  createdAt           DateTime             @default(now()) @map("created_at")
+  ledgerTransaction   LedgerTransaction    @relation(fields: [ledgerTransactionId], references: [id], onDelete: Cascade)
+  cryptoAccount       CryptoAccount        @relation(fields: [cryptoAccountId], references: [id])
+
+  @@index([cryptoAccountId, createdAt])
+  @@map("ledger_entries")
+}
+
+model PaymentMethod {
+  id             String            @id @default(uuid()) @db.Uuid
+  userId         String            @map("user_id") @db.Uuid
+  fiatCurrencyId String            @map("fiat_currency_id") @db.Uuid
+  type           PaymentMethodType
+  providerName   String            @map("provider_name")
+  accountName    String            @map("account_name")
+  accountNumber  String            @map("account_number")
+  isActive       Boolean           @default(true) @map("is_active")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fiatCurrency   FiatCurrency      @relation(fields: [fiatCurrencyId], references: [id])
+  p2pAds         P2PAd[]
+  fiatPayments   FiatPayment[]
+
+  @@map("payment_methods")
+}
+
+model P2PAd {
+  id                    String         @id @default(uuid()) @db.Uuid
+  makerUserId           String         @map("maker_user_id") @db.Uuid
+  assetId               String         @map("asset_id") @db.Uuid
+  fiatCurrencyId        String         @map("fiat_currency_id") @db.Uuid
+  paymentMethodId       String?        @map("payment_method_id") @db.Uuid
+  side                  P2PAdSide
+  price                 Decimal        @db.Decimal(36, 18)
+  totalCryptoAmount     Decimal        @map("total_crypto_amount") @db.Decimal(36, 18)
+  remainingCryptoAmount Decimal        @map("remaining_crypto_amount") @db.Decimal(36, 18)
+  minFiatAmount         Decimal        @map("min_fiat_amount") @db.Decimal(36, 18)
+  maxFiatAmount         Decimal        @map("max_fiat_amount") @db.Decimal(36, 18)
+  status                P2PAdStatus    @default(ACTIVE)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+  maker                 User           @relation("MakerAds", fields: [makerUserId], references: [id])
+  asset                 CryptoAsset    @relation(fields: [assetId], references: [id])
+  fiatCurrency          FiatCurrency   @relation(fields: [fiatCurrencyId], references: [id])
+  paymentMethod         PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  trades                P2PTrade[]
+
+  @@index([assetId, fiatCurrencyId, side, status])
+  @@map("p2p_ads")
+}
+
+model P2PTrade {
+  id           String         @id @default(uuid()) @db.Uuid
+  adId         String         @map("ad_id") @db.Uuid
+  buyerUserId  String         @map("buyer_user_id") @db.Uuid
+  sellerUserId String         @map("seller_user_id") @db.Uuid
+  cryptoAmount Decimal        @map("crypto_amount") @db.Decimal(36, 18)
+  fiatAmount   Decimal        @map("fiat_amount") @db.Decimal(36, 18)
+  price        Decimal        @db.Decimal(36, 18)
+  status       P2PTradeStatus @default(PENDING_PAYMENT)
+  paidAt       DateTime?      @map("paid_at")
+  releasedAt   DateTime?      @map("released_at")
+  cancelledAt  DateTime?      @map("cancelled_at")
+  disputedAt   DateTime?      @map("disputed_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  ad           P2PAd          @relation(fields: [adId], references: [id])
+  buyer        User           @relation("BuyerTrades", fields: [buyerUserId], references: [id])
+  seller       User           @relation("SellerTrades", fields: [sellerUserId], references: [id])
+  fiatPayments FiatPayment[]
+
+  @@index([buyerUserId, sellerUserId, status])
+  @@map("p2p_trades")
+}
+
+model FiatPayment {
+  id              String            @id @default(uuid()) @db.Uuid
+  tradeId         String            @map("trade_id") @db.Uuid
+  paymentMethodId String?           @map("payment_method_id") @db.Uuid
+  amount          Decimal           @db.Decimal(36, 18)
+  proofUrl        String            @map("proof_url")
+  status          FiatPaymentStatus @default(SUBMITTED)
+  paidAt          DateTime          @map("paid_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  trade           P2PTrade          @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  paymentMethod   PaymentMethod?    @relation(fields: [paymentMethodId], references: [id])
+
+  @@map("fiat_payments")
+}
+
+model InternalTransfer {
+  id                  String             @id @default(uuid()) @db.Uuid
+  senderUserId        String             @map("sender_user_id") @db.Uuid
+  receiverUserId      String             @map("receiver_user_id") @db.Uuid
+  assetId             String             @map("asset_id") @db.Uuid
+  amount              Decimal            @db.Decimal(36, 18)
+  status              TransferStatus     @default(COMPLETED)
+  ledgerTransactionId String?            @unique @map("ledger_transaction_id") @db.Uuid
+  createdAt           DateTime           @default(now()) @map("created_at")
+  sender              User               @relation("SentTransfers", fields: [senderUserId], references: [id])
+  receiver            User               @relation("ReceivedTransfers", fields: [receiverUserId], references: [id])
+  asset               CryptoAsset        @relation(fields: [assetId], references: [id])
+  ledgerTransaction   LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
+
+  @@map("internal_transfers")
+}
+
+model ExternalWithdrawal {
+  id                  String             @id @default(uuid()) @db.Uuid
+  userId              String             @map("user_id") @db.Uuid
+  assetId             String             @map("asset_id") @db.Uuid
+  amount              Decimal            @db.Decimal(36, 18)
+  network             String
+  networkFee          Decimal            @map("network_fee") @db.Decimal(36, 18)
+  destinationAddress  String             @map("destination_address")
+  addressTag          String?            @map("address_tag")
+  withdrawOrderId     String?            @map("withdraw_order_id")
+  txHash              String?            @map("tx_hash")
+  failureReason       String?            @map("failure_reason")
+  completedAt         DateTime?          @map("completed_at")
+  status              WithdrawalStatus   @default(PENDING)
+  ledgerTransactionId String?            @unique @map("ledger_transaction_id") @db.Uuid
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  user                User               @relation(fields: [userId], references: [id])
+  asset               CryptoAsset        @relation(fields: [assetId], references: [id])
+  ledgerTransaction   LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
+
+  @@unique([userId, withdrawOrderId])
+  @@index([userId, createdAt])
+  @@index([assetId, network, status])
+  @@map("external_withdrawals")
+}
