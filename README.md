@@ -101,7 +101,10 @@ docker compose up -d
 # 2. Apply migrations to construct the database schema
 npm run db:migrate
 
-# 3. Seed initial assets, roles, permissions, and test accounts
+# 3. Generate Prisma Client from the schema
+npm run db:generate
+
+# 4. Seed initial assets, roles, permissions, and test accounts
 npm run seed
 ```
 
@@ -152,6 +155,7 @@ Recommended setup:
 ```bash
 docker compose up -d
 npm run db:migrate
+npm run db:generate
 npm run seed
 npm run start:dev
 ```
@@ -464,7 +468,7 @@ The package runner includes predefined helper script entries in `package.json`:
 | `npm run test:e2e:prepare` | Recreates and migrations clean database context for testing environments |
 | `npm run test:e2e` | Runs preparation and executes E2E integration scenarios consecutively |
 | `npm run test:watch` | Keeps the Jest test suite listening for changes in source modules |
-| `npm run seed` | Seeds default asset networks, roles, and accounts into database tables |
+| `npm run seed` | Seeds default asset networks, roles, and accounts into database tables; run `npm run db:generate` first on a fresh clone |
 | `npm run db:generate` | Refreshes database client interface class hooks based on latest schema definitions |
 | `npm run db:migrate` | Synchronizes database state schema and maps history states via Prisma Migrator |
 | `npm run db:studio` | Launches web interface server showing database table rows inside browser |
