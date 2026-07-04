@@ -1,0 +1,3089 @@
+{
+    "info": {
+        "_postman_id": "8b99f31d-45c3-4675-a681-c2c-exchange-api-tests",
+        "name": "C2C Exchange API Tests",
+        "description": "Postman collection for NestJS C2C Exchange API. Recommended run order: 00 setup, 01 THB fiat purchase, 02 USD fiat purchase, 03 internal transfer, 04 external withdrawal, then 07 register/KYC and negative folders as needed. External withdrawal uses configured networks and support/admin completion. Use seeded local demo data: npm run seed. Stateful flow requests mutate balances/statuses; reset and seed DB before a clean full rerun. There is no on-platform fiat wallet in the current API; fiat checks assert trade fiatAmount and fiatPayments proof state. Demo password for seeded users: password123.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000/api/v1"
+        },
+        {
+            "key": "password",
+            "value": "password123"
+        },
+        {
+            "key": "buyerEmail",
+            "value": "buyer@example.com"
+        },
+        {
+            "key": "sellerEmail",
+            "value": "seller@example.com"
+        },
+        {
+            "key": "supportEmail",
+            "value": "support@example.com"
+        },
+        {
+            "key": "adminEmail",
+            "value": "admin@example.com"
+        },
+        {
+            "key": "buyerUserId",
+            "value": "40000000-0000-4000-8000-000000000001"
+        },
+        {
+            "key": "sellerUserId",
+            "value": "40000000-0000-4000-8000-000000000002"
+        },
+        {
+            "key": "supportUserId",
+            "value": "40000000-0000-4000-8000-000000000003"
+        },
+        {
+            "key": "adminUserId",
+            "value": "40000000-0000-4000-8000-000000000004"
+        },
+        {
+            "key": "sellerThbPaymentMethodId",
+            "value": "50000000-0000-4000-8000-000000000001"
+        },
+        {
+            "key": "sellerUsdPaymentMethodId",
+            "value": "50000000-0000-4000-8000-000000000002"
+        },
+        {
+            "key": "buyerUsdPaymentMethodId",
+            "value": "50000000-0000-4000-8000-000000000003"
+        },
+        {
+            "key": "seedSellBtcThbAdId",
+            "value": "60000000-0000-4000-8000-000000000001"
+        },
+        {
+            "key": "seedBuyEthUsdAdId",
+            "value": "60000000-0000-4000-8000-000000000002"
+        },
+        {
+            "key": "seedPendingBtcTradeId",
+            "value": "70000000-0000-4000-8000-000000000002"
+        },
+        {
+            "key": "seedDisputedBtcTradeId",
+            "value": "70000000-0000-4000-8000-000000000003"
+        },
+        {
+            "key": "buyerToken",
+            "value": ""
+        },
+        {
+            "key": "sellerToken",
+            "value": ""
+        },
+        {
+            "key": "supportToken",
+            "value": ""
+        },
+        {
+            "key": "adminToken",
+            "value": ""
+        },
+        {
+            "key": "createdSellAdId",
+            "value": ""
+        },
+        {
+            "key": "createdSellTradeId",
+            "value": ""
+        },
+        {
+            "key": "createdBuyTradeId",
+            "value": ""
+        },
+        {
+            "key": "createdInternalTransferId",
+            "value": ""
+        },
+        {
+            "key": "createdExternalWithdrawalId",
+            "value": ""
+        },
+        {
+            "key": "pendingKycUserId",
+            "value": ""
+        },
+        {
+            "key": "pendingKycToken",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "00 Setup - Sessions and Reference",
+            "item": [
+                {
+                    "name": "Auth Sessions",
+                    "item": [
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"password\":  \"{{password}}\",\r\n    \"email\":  \"{{buyerEmail}}\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/auth/login",
+                                    "path": [
+                                        "auth",
+                                        "login"
+                                    ]
+                                },
+                                "header": {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            },
+                            "name": "Login Buyer",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                            "const json = pm.response.json();",
+                                            "pm.collectionVariables.set('buyerToken', json.accessToken);",
+                                            "pm.collectionVariables.set('buyerUserId', json.user.id);",
+                                            "pm.test('buyer token saved', function () { pm.expect(json.accessToken).to.be.a('string'); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"password\":  \"{{password}}\",\r\n    \"email\":  \"{{sellerEmail}}\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/auth/login",
+                                    "path": [
+                                        "auth",
+                                        "login"
+                                    ]
+                                },
+                                "header": {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            },
+                            "name": "Login Seller",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                            "const json = pm.response.json();",
+                                            "pm.collectionVariables.set('sellerToken', json.accessToken);",
+                                            "pm.collectionVariables.set('sellerUserId', json.user.id);"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"password\":  \"{{password}}\",\r\n    \"email\":  \"{{supportEmail}}\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/auth/login",
+                                    "path": [
+                                        "auth",
+                                        "login"
+                                    ]
+                                },
+                                "header": {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            },
+                            "name": "Login Support",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                            "const json = pm.response.json();",
+                                            "pm.collectionVariables.set('supportToken', json.accessToken);",
+                                            "pm.collectionVariables.set('supportUserId', json.user.id);"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"password\":  \"{{password}}\",\r\n    \"email\":  \"{{adminEmail}}\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/auth/login",
+                                    "path": [
+                                        "auth",
+                                        "login"
+                                    ]
+                                },
+                                "header": {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            },
+                            "name": "Login Admin",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                            "const json = pm.response.json();",
+                                            "pm.collectionVariables.set('adminToken', json.accessToken);",
+                                            "pm.collectionVariables.set('adminUserId', json.user.id);"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        }
+                    ],
+                    "description": "Run these first. Tokens are stored in collection variables."
+                },
+                {
+                    "name": "Catalog",
+                    "item": [
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/assets",
+                                    "path": [
+                                        "assets"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "List Crypto Assets",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                            "pm.test('has assets', function () { pm.expect(pm.response.json().length).to.be.above(0); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "List USDT Withdraw Networks",
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "raw": "{{baseUrl}}/assets/USDT/withdraw-networks",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "assets",
+                                        "USDT",
+                                        "withdraw-networks"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                            "pm.test('USDT supports TRX/ETH/BSC', function () { const networks = pm.response.json().map(function (item) { return item.network; }); pm.expect(networks).to.include('TRX'); pm.expect(networks).to.include('ETH'); pm.expect(networks).to.include('BSC'); });"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/fiat-currencies",
+                                    "path": [
+                                        "fiat-currencies"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "List Fiat Currencies",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 200', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "query": [
+                                        {
+                                            "key": "page",
+                                            "value": "1"
+                                        },
+                                        {
+                                            "key": "pageSize",
+                                            "value": "20"
+                                        }
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/ads?page=1&pageSize=20",
+                                    "path": [
+                                        "p2p",
+                                        "ads"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "List Active Ads",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 200', function () { pm.response.to.have.status(200); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "description": "Login and read-only reference calls needed before the business flows."
+        },
+        {
+            "name": "01 Flow - Buy BTC With THB From Another User",
+            "item": [
+                {
+                    "name": "01 Buyer Wallet Before THB Purchase",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes BTC', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'BTC'; })).to.eql(true); });",
+                                    "pm.test('wallet includes XRP', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'XRP'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "02 Seller Wallet Before THB Sale",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes BTC', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'BTC'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "03 Browse SELL BTC/THB Ads",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/p2p/ads?assetSymbol=BTC&side=SELL&fiatCode=THB",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "p2p",
+                                "ads"
+                            ],
+                            "query": [
+                                {
+                                    "key": "assetSymbol",
+                                    "value": "BTC"
+                                },
+                                {
+                                    "key": "side",
+                                    "value": "SELL"
+                                },
+                                {
+                                    "key": "fiatCode",
+                                    "value": "THB"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "const ads = pm.response.json();",
+                                    "if (ads.length > 0) {",
+                                    "  pm.test('ads are SELL', function () { ads.forEach(function (ad) { pm.expect(ad.side).to.eql('SELL'); }); });",
+                                    "  pm.test('ads use BTC', function () { ads.forEach(function (ad) { pm.expect(ad.asset.symbol).to.eql('BTC'); }); });",
+                                    "  pm.test('ads use THB', function () { ads.forEach(function (ad) { pm.expect(ad.fiatCurrency.code).to.eql('THB'); }); });",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "body": {
+                            "raw": "{\r\n    \"cryptoAmount\":  \"0.001\"\r\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            },
+                            "mode": "raw"
+                        },
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/ads/{{seedSellBtcThbAdId}}/trades",
+                            "path": [
+                                "p2p",
+                                "ads",
+                                "{{seedSellBtcThbAdId}}",
+                                "trades"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "04 Buyer Opens BTC/THB Trade From Seller SELL Ad",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "const json = pm.response.json();",
+                                    "pm.collectionVariables.set('createdSellTradeId', json.id);",
+                                    "pm.test('trade pending payment', function () { pm.expect(json.status).to.eql('PENDING_PAYMENT'); });",
+                                    "pm.test('trade fiat currency is THB', function () { pm.expect(json.ad.fiatCurrency.code).to.eql('THB'); });",
+                                    "pm.test('fiat amount is 2500 THB', function () { pm.expect(Number(json.fiatAmount)).to.eql(2500); });",
+                                    "pm.test('no fiat payment proof before buyer pays THB', function () { pm.expect(json.fiatPayments || []).to.have.length(0); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "body": {
+                            "raw": "{\r\n    \"proofUrl\":  \"https://example.com/proofs/postman-sell-trade.jpg\",\r\n    \"paymentMethodId\":  \"{{sellerThbPaymentMethodId}}\"\r\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            },
+                            "mode": "raw"
+                        },
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/trades/{{createdSellTradeId}}/payments",
+                            "path": [
+                                "p2p",
+                                "trades",
+                                "{{createdSellTradeId}}",
+                                "payments"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "05 Buyer Submits THB Payment Proof",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('trade paid', function () { pm.expect(pm.response.json().status).to.eql('PAID'); });",
+                                    "const thbPaidTrade = pm.response.json();",
+                                    "pm.test('THB payment proof recorded', function () { pm.expect(thbPaidTrade.fiatPayments).to.have.length(1); });",
+                                    "pm.test('THB payment is submitted for the trade fiat amount', function () { const payment = thbPaidTrade.fiatPayments[0]; pm.expect(payment.status).to.eql('SUBMITTED'); pm.expect(Number(payment.amount)).to.eql(Number(thbPaidTrade.fiatAmount)); pm.expect(payment.paymentMethod.id).to.eql(pm.collectionVariables.get('sellerThbPaymentMethodId')); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/trades/{{createdSellTradeId}}/releases",
+                            "path": [
+                                "p2p",
+                                "trades",
+                                "{{createdSellTradeId}}",
+                                "releases"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "06 Seller Releases BTC To Buyer",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('trade released', function () { pm.expect(pm.response.json().status).to.eql('RELEASED'); });",
+                                    "const thbReleasedTrade = pm.response.json();",
+                                    "pm.test('THB payment accepted after BTC release', function () { pm.expect(thbReleasedTrade.fiatPayments).to.have.length(1); pm.expect(thbReleasedTrade.fiatPayments[0].status).to.eql('ACCEPTED'); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "name": "07 Support Reads Released BTC/THB Trade",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/p2p/trades/{{createdSellTradeId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "p2p",
+                                "trades",
+                                "{{createdSellTradeId}}"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{supportToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "const json = pm.response.json();",
+                                    "pm.test('trade id matches createdSellTradeId', function () { pm.expect(json.id).to.eql(pm.collectionVariables.get('createdSellTradeId')); });",
+                                    "pm.test('trade is RELEASED', function () { pm.expect(json.status).to.eql('RELEASED'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "08 Buyer Wallet After BTC Release",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes BTC', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'BTC'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "09 Buyer Ledger After BTC Release",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me/ledger?page=1&pageSize=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me",
+                                "ledger"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "10 Seller Ledger After BTC Sale",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me/ledger?page=1&pageSize=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me",
+                                "ledger"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ],
+            "description": "Buyer pays THB off-platform, then seller releases BTC escrow inside the system."
+        },
+        {
+            "name": "02 Flow - Buy ETH With USD From Another User",
+            "item": [
+                {
+                    "name": "01 Buyer Wallet Before USD Purchase",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes ETH', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'ETH'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "02 Seller Wallet Before ETH Sale",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes ETH', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'ETH'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "03 Browse BUY ETH/USD Ads",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/p2p/ads?assetSymbol=ETH&side=BUY&fiatCode=USD",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "p2p",
+                                "ads"
+                            ],
+                            "query": [
+                                {
+                                    "key": "assetSymbol",
+                                    "value": "ETH"
+                                },
+                                {
+                                    "key": "side",
+                                    "value": "BUY"
+                                },
+                                {
+                                    "key": "fiatCode",
+                                    "value": "USD"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "const ads = pm.response.json();",
+                                    "if (ads.length > 0) {",
+                                    "  pm.test('ads are BUY', function () { ads.forEach(function (ad) { pm.expect(ad.side).to.eql('BUY'); }); });",
+                                    "  pm.test('ads use ETH', function () { ads.forEach(function (ad) { pm.expect(ad.asset.symbol).to.eql('ETH'); }); });",
+                                    "  pm.test('ads use USD', function () { ads.forEach(function (ad) { pm.expect(ad.fiatCurrency.code).to.eql('USD'); }); });",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "body": {
+                            "raw": "{\r\n    \"cryptoAmount\":  \"0.1\"\r\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            },
+                            "mode": "raw"
+                        },
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/ads/{{seedBuyEthUsdAdId}}/trades",
+                            "path": [
+                                "p2p",
+                                "ads",
+                                "{{seedBuyEthUsdAdId}}",
+                                "trades"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "04 Seller Accepts Buyer BUY ETH/USD Ad",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "const json = pm.response.json();",
+                                    "pm.collectionVariables.set('createdBuyTradeId', json.id);",
+                                    "pm.test('buy-ad trade pending', function () { pm.expect(json.status).to.eql('PENDING_PAYMENT'); });",
+                                    "pm.test('trade fiat currency is USD', function () { pm.expect(json.ad.fiatCurrency.code).to.eql('USD'); });",
+                                    "pm.test('fiat amount is 300 USD', function () { pm.expect(Number(json.fiatAmount)).to.eql(300); });",
+                                    "pm.test('no fiat payment proof before buyer pays USD', function () { pm.expect(json.fiatPayments || []).to.have.length(0); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "body": {
+                            "raw": "{\r\n    \"proofUrl\":  \"https://example.com/proofs/postman-buy-ad-trade.jpg\",\r\n    \"paymentMethodId\":  \"{{sellerUsdPaymentMethodId}}\"\r\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            },
+                            "mode": "raw"
+                        },
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/trades/{{createdBuyTradeId}}/payments",
+                            "path": [
+                                "p2p",
+                                "trades",
+                                "{{createdBuyTradeId}}",
+                                "payments"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "05 Buyer Submits USD Payment Proof",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "const usdPaidTrade = pm.response.json();",
+                                    "pm.test('USD payment proof recorded', function () { pm.expect(usdPaidTrade.fiatPayments).to.have.length(1); });",
+                                    "pm.test('USD payment is submitted for the trade fiat amount', function () { const payment = usdPaidTrade.fiatPayments[0]; pm.expect(payment.status).to.eql('SUBMITTED'); pm.expect(Number(payment.amount)).to.eql(Number(usdPaidTrade.fiatAmount)); pm.expect(payment.paymentMethod.id).to.eql(pm.collectionVariables.get('sellerUsdPaymentMethodId')); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/trades/{{createdBuyTradeId}}/releases",
+                            "path": [
+                                "p2p",
+                                "trades",
+                                "{{createdBuyTradeId}}",
+                                "releases"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "06 Seller Releases ETH To Buyer",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "const usdReleasedTrade = pm.response.json();",
+                                    "pm.test('USD payment accepted after ETH release', function () { pm.expect(usdReleasedTrade.fiatPayments).to.have.length(1); pm.expect(usdReleasedTrade.fiatPayments[0].status).to.eql('ACCEPTED'); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "name": "07 Support Reads Released ETH/USD Trade",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/p2p/trades/{{createdBuyTradeId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "p2p",
+                                "trades",
+                                "{{createdBuyTradeId}}"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{supportToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "const json = pm.response.json();",
+                                    "pm.test('trade id matches createdBuyTradeId', function () { pm.expect(json.id).to.eql(pm.collectionVariables.get('createdBuyTradeId')); });",
+                                    "pm.test('trade is RELEASED', function () { pm.expect(json.status).to.eql('RELEASED'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "08 Buyer Wallet After ETH Release",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes ETH', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'ETH'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "09 Buyer Ledger After ETH Release",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me/ledger?page=1&pageSize=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me",
+                                "ledger"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "10 Seller Ledger After ETH Sale",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me/ledger?page=1&pageSize=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me",
+                                "ledger"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ],
+            "description": "Buyer wants to buy ETH with USD via a BUY ad; seller accepts, buyer submits USD payment proof, seller releases ETH."
+        },
+        {
+            "name": "03 Flow - Internal Crypto Transfer",
+            "item": [
+                {
+                    "name": "01 Buyer Wallet Before Internal XRP Transfer",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes XRP', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'XRP'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "body": {
+                            "raw": "{\r\n    \"amount\":  \"1\",\r\n    \"receiverUserId\":  \"{{sellerUserId}}\",\r\n    \"assetSymbol\":  \"XRP\"\r\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            },
+                            "mode": "raw"
+                        },
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/wallets/internal-transfers",
+                            "path": [
+                                "wallets",
+                                "internal-transfers"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "02 Buyer Sends XRP To Seller Internally",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('transfer completed', function () { pm.expect(pm.response.json().status).to.eql('COMPLETED'); });",
+                                    "const transferJson = pm.response.json();",
+                                    "pm.collectionVariables.set('createdInternalTransferId', transferJson.id);",
+                                    "pm.test('internal transfer completed', function () { pm.expect(transferJson.status).to.eql('COMPLETED'); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "name": "03 Buyer Ledger After Internal Transfer",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me/ledger?page=1&pageSize=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me",
+                                "ledger"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "04 Seller Wallet After Receiving XRP",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes XRP', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'XRP'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "05 Seller Ledger After Receiving XRP",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me/ledger?page=1&pageSize=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me",
+                                "ledger"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ],
+            "description": "Move crypto between platform users without leaving the exchange."
+        },
+        {
+            "name": "04 Flow - External Crypto Withdrawal",
+            "item": [
+                {
+                    "name": "01 Seller Wallet Before ETH Withdrawal",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes ETH', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'ETH'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"assetSymbol\": \"ETH\",\n    \"network\": \"ETH\",\n    \"amount\": \"0.01\",\n    \"destinationAddress\": \"0x742d35Cc6634C0532925a3b844Bc454e4438f44e\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/wallets/external-withdrawals",
+                            "path": [
+                                "wallets",
+                                "external-withdrawals"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "02 Seller Creates Pending ETH External Withdrawal",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('withdrawal is pending', function () { pm.expect(pm.response.json().status).to.eql('PENDING'); });",
+                                    "pm.test('configured ETH fee is applied', function () { pm.expect(pm.response.json().networkFee).to.eql('0.002'); });",
+                                    "const withdrawalJson = pm.response.json();",
+                                    "pm.collectionVariables.set('createdExternalWithdrawalId', withdrawalJson.id);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "03 Support Completes ETH External Withdrawal",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/external-withdrawals/{{createdExternalWithdrawalId}}/completions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "external-withdrawals",
+                                "{{createdExternalWithdrawalId}}",
+                                "completions"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{supportToken}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"txHash\": \"0xpostmantxhash\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('withdrawal completed', function () { pm.expect(pm.response.json().status).to.eql('COMPLETED'); });",
+                                    "pm.test('txHash saved', function () { pm.expect(pm.response.json().txHash).to.eql('0xpostmantxhash'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "04 Seller Ledger After External Withdrawal",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me/ledger?page=1&pageSize=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me",
+                                "ledger"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "05 Seller Wallet After ETH Withdrawal",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/wallets/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "wallets",
+                                "me"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });",
+                                    "pm.test('wallet includes ETH', function () { const rows = pm.response.json(); pm.expect(rows.some(function (row) { return row.asset && row.asset.symbol === 'ETH'; })).to.eql(true); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ],
+            "description": "Withdraw crypto from a platform wallet to an external address."
+        },
+        {
+            "name": "05 Feature - P2P Ad Management",
+            "item": [
+                {
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "query": [
+                                {
+                                    "key": "assetSymbol",
+                                    "value": "BTC"
+                                },
+                                {
+                                    "key": "side",
+                                    "value": "SELL"
+                                },
+                                {
+                                    "key": "fiatCode",
+                                    "value": "THB"
+                                }
+                            ],
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/ads?assetSymbol=BTC&side=SELL&fiatCode=THB",
+                            "path": [
+                                "p2p",
+                                "ads"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "List SELL BTC/THB Ads",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "body": {
+                            "raw": "{\r\n    \"fiatCode\":  \"THB\",\r\n    \"minFiatAmount\":  \"100\",\r\n    \"assetSymbol\":  \"DOGE\",\r\n    \"price\":  \"3.5\",\r\n    \"side\":  \"SELL\",\r\n    \"totalCryptoAmount\":  \"100\",\r\n    \"maxFiatAmount\":  \"350\",\r\n    \"paymentMethodId\":  \"{{sellerThbPaymentMethodId}}\"\r\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            },
+                            "mode": "raw"
+                        },
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/ads",
+                            "path": [
+                                "p2p",
+                                "ads"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "Create SELL DOGE THB Ad",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "const json = pm.response.json();",
+                                    "pm.collectionVariables.set('createdSellAdId', json.id);",
+                                    "pm.test('ad active', function () { pm.expect(json.status).to.eql('ACTIVE'); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/ads/{{createdSellAdId}}/cancellations",
+                            "path": [
+                                "p2p",
+                                "ads",
+                                "{{createdSellAdId}}",
+                                "cancellations"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{sellerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "Cancel Created SELL Ad",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('ad cancelled', function () { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                }
+            ],
+            "description": "Create and cancel ads outside the main fiat purchase flows."
+        },
+        {
+            "name": "06 Feature - Users, RBAC, and Disputes",
+            "item": [
+                {
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/users/{{buyerUserId}}",
+                            "path": [
+                                "users",
+                                "{{buyerUserId}}"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{supportToken}}"
+                            }
+                        ]
+                    },
+                    "name": "Get Buyer User As Support",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('does not expose passwordHash', function () { pm.expect(JSON.stringify(pm.response.json())).to.not.include('passwordHash'); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/users/{{sellerUserId}}",
+                            "path": [
+                                "users",
+                                "{{sellerUserId}}"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{adminToken}}"
+                            }
+                        ]
+                    },
+                    "name": "Get Seller User As Admin",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/p2p/trades/{{seedDisputedBtcTradeId}}/cancellations",
+                            "path": [
+                                "p2p",
+                                "trades",
+                                "{{seedDisputedBtcTradeId}}",
+                                "cancellations"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{supportToken}}"
+                            }
+                        ]
+                    },
+                    "name": "Support Refunds Seed Disputed Trade",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('dispute refunded', function () { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "07 Flow - Register and KYC",
+            "item": [
+                {
+                    "name": "01 Register Pending KYC Trader",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "register"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"pending.kyc+{{$timestamp}}@example.com\",\n    \"password\": \"{{password}}\",\n    \"displayName\": \"Pending KYC Trader\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "const json = pm.response.json();",
+                                    "pm.test('new user starts pending KYC', function () { pm.expect(json.user.kycStatus).to.eql('PENDING'); });",
+                                    "pm.test('returns safe user', function () { pm.expect(json.user.passwordHash).to.be.undefined; });",
+                                    "pm.collectionVariables.set('pendingKycUserId', json.user.id);",
+                                    "pm.collectionVariables.set('pendingKycToken', json.accessToken);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "02 Support Cannot Verify Pending KYC Trader",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/users/{{pendingKycUserId}}/kyc-verifications",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "{{pendingKycUserId}}",
+                                "kyc-verifications"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{supportToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 403', function () { pm.response.to.have.status(403); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "03 Admin Verifies Pending KYC Trader",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/users/{{pendingKycUserId}}/kyc-verifications",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "{{pendingKycUserId}}",
+                                "kyc-verifications"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{adminToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('KYC verified', function () { pm.expect(pm.response.json().kycStatus).to.eql('VERIFIED'); });",
+                                    "pm.test('does not expose passwordHash', function () { pm.expect(JSON.stringify(pm.response.json())).to.not.include('passwordHash'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "04 Admin Reads Verified KYC Trader",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/users/{{pendingKycUserId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "users",
+                                "{{pendingKycUserId}}"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{adminToken}}"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                                    "pm.test('KYC remains verified', function () { pm.expect(pm.response.json().kycStatus).to.eql('VERIFIED'); });",
+                                    "pm.test('registered user has trader role', function () { pm.expect(pm.response.json().roles.map(function (role) { return role.code; })).to.include('trader'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "raw": "{{baseUrl}}/auth/logout",
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{buyerToken}}"
+                            }
+                        ]
+                    },
+                    "name": "05 Logout Buyer - Optional Run Last",
+                    "event": [
+                        {
+                            "script": {
+                                "exec": [
+                                    "pm.test('status is 201', function () { pm.response.to.have.status(201); });",
+                                    "pm.test('token revoked', function () { pm.expect(pm.response.json().revoked).to.eql(true); });"
+                                ],
+                                "type": "text/javascript"
+                            },
+                            "listen": "test"
+                        }
+                    ]
+                }
+            ],
+            "description": "Register a new trader, confirm KYC starts as PENDING, verify that support cannot approve it, then let admin verify KYC. Logout remains optional and should run last."
+        },
+        {
+            "name": "90 Negative and Validation Cases",
+            "item": [
+                {
+                    "name": "Auth and RBAC",
+                    "item": [
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"password\":  \"password123\",\r\n    \"email\":  \"missing@example.com\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/auth/login",
+                                    "path": [
+                                        "auth",
+                                        "login"
+                                    ]
+                                },
+                                "header": {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            },
+                            "name": "Invalid Login Returns 401",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/assets",
+                                    "path": [
+                                        "assets"
+                                    ]
+                                },
+                                "header": {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            },
+                            "name": "Protected Route Without Token Returns 401",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/users/{{sellerUserId}}",
+                                    "path": [
+                                        "users",
+                                        "{{sellerUserId}}"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Trader Cannot Read Users",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 403', function () { pm.response.to.have.status(403); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/users/40000000-0000-4000-8000-999999999999",
+                                    "path": [
+                                        "users",
+                                        "40000000-0000-4000-8000-999999999999"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{supportToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Missing User Returns 404",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 404', function () { pm.response.to.have.status(404); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Wallets",
+                    "item": [
+                        {
+                            "name": "Internal Transfer Invalid Receiver UUID Returns 400",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{baseUrl}}/wallets/internal-transfers",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "wallets",
+                                        "internal-transfers"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"assetSymbol\": \"XRP\",\n    \"receiverUserId\": \"not-a-uuid\",\n    \"amount\": \"1\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Internal Transfer Missing Receiver Returns 404",
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "raw": "{{baseUrl}}/wallets/internal-transfers",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "wallets",
+                                        "internal-transfers"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"assetSymbol\": \"XRP\",\n    \"receiverUserId\": \"40000000-0000-4000-8000-999999999999\",\n    \"amount\": \"1\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test('status is 404', function () { pm.response.to.have.status(404); });"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"amount\":  \"0.01\",\r\n    \"receiverUserId\":  \"{{buyerUserId}}\",\r\n    \"assetSymbol\":  \"BTC\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/wallets/internal-transfers",
+                                    "path": [
+                                        "wallets",
+                                        "internal-transfers"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Internal Transfer Same User Returns 400",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"assetSymbol\": \"ETH\",\n    \"network\": \"ETH\",\n    \"amount\": \"9999\",\n    \"destinationAddress\": \"0x742d35Cc6634C0532925a3b844Bc454e4438f44e\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/wallets/external-withdrawals",
+                                    "path": [
+                                        "wallets",
+                                        "external-withdrawals"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "External Withdrawal Insufficient Balance Returns 400",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "P2P Ads and Trades",
+                    "item": [
+                        {
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/ads/{{seedSellBtcThbAdId}}/cancellations",
+                                    "path": [
+                                        "p2p",
+                                        "ads",
+                                        "{{seedSellBtcThbAdId}}",
+                                        "cancellations"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Buyer Cannot Cancel Seller Seed Ad",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 403', function () { pm.response.to.have.status(403); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"cryptoAmount\":  \"0.001\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/ads/{{seedSellBtcThbAdId}}/trades",
+                                    "path": [
+                                        "p2p",
+                                        "ads",
+                                        "{{seedSellBtcThbAdId}}",
+                                        "trades"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{sellerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Maker Cannot Take Own SELL Ad",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/trades/{{seedPendingBtcTradeId}}/disputes",
+                                    "path": [
+                                        "p2p",
+                                        "trades",
+                                        "{{seedPendingBtcTradeId}}",
+                                        "disputes"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Dispute Seed Pending Trade Returns 400",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "query": [
+                                        {
+                                            "key": "page",
+                                            "value": "abc"
+                                        }
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/ads?page=abc",
+                                    "path": [
+                                        "p2p",
+                                        "ads"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Invalid Pagination Returns 400",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "method": "GET",
+                                "url": {
+                                    "query": [
+                                        {
+                                            "key": "side",
+                                            "value": "INVALID"
+                                        }
+                                    ],
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/ads?side=INVALID",
+                                    "path": [
+                                        "p2p",
+                                        "ads"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Invalid Side Enum Returns 400",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\n  \"assetSymbol\": \"BTC\",\n  \"fiatCode\": \"THB\",\n  \"side\": \"SELL\",\n  \"price\": \"1000000\",\n  \"totalCryptoAmount\": \"0.01\",\n  \"minFiatAmount\": \"1000\",\n  \"maxFiatAmount\": \"10000\",\n  \"paymentMethodId\": \"{{sellerThbPaymentMethodId}}\",\n  \"unexpected\": true\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/ads",
+                                    "path": [
+                                        "p2p",
+                                        "ads"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{sellerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Create Ad Unknown Field Returns 400",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"fiatCode\":  \"THB\",\r\n    \"minFiatAmount\":  \"1000\",\r\n    \"assetSymbol\":  \"BTC\",\r\n    \"price\":  \"1000000\",\r\n    \"side\":  \"SELL\",\r\n    \"totalCryptoAmount\":  \"0\",\r\n    \"maxFiatAmount\":  \"10000\",\r\n    \"paymentMethodId\":  \"{{sellerThbPaymentMethodId}}\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/ads",
+                                    "path": [
+                                        "p2p",
+                                        "ads"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{sellerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Create Ad Zero Amount Returns 400",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Create Ad Payment Method Currency Mismatch Returns 404",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{sellerToken}}"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"assetSymbol\": \"BTC\",\n  \"fiatCode\": \"THB\",\n  \"side\": \"SELL\",\n  \"price\": \"1000000\",\n  \"totalCryptoAmount\": \"0.01\",\n  \"minFiatAmount\": \"1000\",\n  \"maxFiatAmount\": \"10000\",\n  \"paymentMethodId\": \"{{sellerUsdPaymentMethodId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/p2p/ads",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "p2p",
+                                        "ads"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test('status is 404', function () { pm.response.to.have.status(404); });"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"cryptoAmount\":  \"0.0001\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/ads/{{seedSellBtcThbAdId}}/trades",
+                                    "path": [
+                                        "p2p",
+                                        "ads",
+                                        "{{seedSellBtcThbAdId}}",
+                                        "trades"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Trade Amount Outside Min Max Returns 400",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Submit Payment Method Currency Mismatch Returns 404",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{buyerToken}}"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"proofUrl\": \"https://example.com/proofs/wrong-currency.jpg\",\n  \"paymentMethodId\": \"{{sellerUsdPaymentMethodId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/p2p/trades/{{seedPendingBtcTradeId}}/payments",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "p2p",
+                                        "trades",
+                                        "{{seedPendingBtcTradeId}}",
+                                        "payments"
+                                    ]
+                                }
+                            },
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "type": "text/javascript",
+                                        "exec": [
+                                            "pm.test('status is 404', function () { pm.response.to.have.status(404); });"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "request": {
+                                "body": {
+                                    "raw": "{\r\n    \"proofUrl\":  \"https://example.com/proofs/wrong-party.jpg\",\r\n    \"paymentMethodId\":  \"{{sellerThbPaymentMethodId}}\"\r\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    },
+                                    "mode": "raw"
+                                },
+                                "method": "POST",
+                                "url": {
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "raw": "{{baseUrl}}/p2p/trades/{{seedPendingBtcTradeId}}/payments",
+                                    "path": [
+                                        "p2p",
+                                        "trades",
+                                        "{{seedPendingBtcTradeId}}",
+                                        "payments"
+                                    ]
+                                },
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{sellerToken}}"
+                                    }
+                                ]
+                            },
+                            "name": "Submit Payment As Non-Buyer Returns 403",
+                            "event": [
+                                {
+                                    "script": {
+                                        "exec": [
+                                            "pm.test('status is 403', function () { pm.response.to.have.status(403); });"
+                                        ],
+                                        "type": "text/javascript"
+                                    },
+                                    "listen": "test"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
