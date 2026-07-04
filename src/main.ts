@@ -29,7 +29,7 @@ async function bootstrap(): Promise<void> {
     .setTitle("Crypto C2C Exchange API")
     .setDescription("P2P exchange with escrow ledger and dynamic RBAC")
     .setVersion("0.1.0")
-    .addServer(`/${apiPrefix}`)
+    .addServer("/")
     .addBearerAuth()
     .build();
 
